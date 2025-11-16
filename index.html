@@ -115,7 +115,7 @@
         }
       } catch (error) {
         console.error('登录错误:', error);
-        errorMessage.textContent = '网络错误，请稍后重试';
+        errorMessage.textContent = '网络错误: ' + (error.message || '请稍后重试');
         errorMessage.style.display = 'block';
       } finally {
         // 恢复按钮状态

@@ -5,6 +5,18 @@ import { query } from '../utils/db.js';
 import { comparePassword, generateToken } from '../utils/auth.js';
 
 export default async function handler(req) {
+  // 处理OPTIONS预检请求（CORS）
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
+    });
+  }
+
   // 只允许POST请求
   if (req.method !== 'POST') {
     return new Response(
@@ -133,15 +145,16 @@ export default async function handler(req) {
     );
   } catch (error) {
     console.error('登录错误:', error);
-    return new Response(
+      return new Response(
       JSON.stringify({
         success: false,
-        message: '服务器内部错误',
+        message: '服务器内部错误: ' + error.message,
       }),
       {
         status: 500,
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
+          'Access-Control-Allow-Origin': '*',
         },
       }
     );
