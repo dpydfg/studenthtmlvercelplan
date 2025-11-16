@@ -4,40 +4,37 @@
 import { query } from '../utils/db.js';
 import { authenticateRequest } from '../utils/auth.js';
 
-export default async function handler(req) {
+export default async function handler(req, res) {
+  // 设置CORS头
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  // 处理OPTIONS预检请求
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
   // 只允许GET请求
   if (req.method !== 'GET') {
-    return new Response(
-      JSON.stringify({ success: false, message: '方法不允许' }),
-      {
-        status: 405,
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-        },
-      }
-    );
+    res.status(405).json({ success: false, message: '方法不允许' });
+    return;
   }
 
   try {
     // 验证token
     const user = authenticateRequest(req);
     if (!user) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          message: '未授权，请先登录',
-        }),
-        {
-          status: 401,
-          headers: {
-            'Content-Type': 'application/json; charset=utf-8',
-          },
-        }
-      );
+      res.status(401).json({
+        success: false,
+        message: '未授权，请先登录',
+      });
+      return;
     }
 
     // 获取查询参数
-    const url = new URL(req.url);
+    const url = new URL(req.url, `http://${req.headers.host}`);
     const search = url.searchParams.get('search') || '';
     const page = parseInt(url.searchParams.get('page') || '1');
     const pageSize = parseInt(url.searchParams.get('pageSize') || '10');
@@ -87,52 +84,28 @@ export default async function handler(req) {
       );
       totalCount = 1;
     } else {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          message: '无效的用户类型',
-        }),
-        {
-          status: 403,
-          headers: {
-            'Content-Type': 'application/json; charset=utf-8',
-          },
-        }
-      );
+      res.status(403).json({
+        success: false,
+        message: '无效的用户类型',
+      });
+      return;
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        data: students,
-        pagination: {
-          page,
-          pageSize,
-          total: totalCount,
-          totalPages: Math.ceil(totalCount / pageSize),
-        },
-      }),
-      {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-        },
-      }
-    );
+    res.status(200).json({
+      success: true,
+      data: students,
+      pagination: {
+        page,
+        pageSize,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / pageSize),
+      },
+    });
   } catch (error) {
     console.error('获取学生列表错误:', error);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        message: '服务器内部错误',
-      }),
-      {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-        },
-      }
-    );
+    res.status(500).json({
+      success: false,
+      message: '服务器内部错误: ' + error.message,
+    });
   }
 }
-

@@ -4,51 +4,40 @@
 import { query } from '../utils/db.js';
 import { comparePassword, generateToken } from '../utils/auth.js';
 
-export default async function handler(req) {
+export default async function handler(req, res) {
+  // 设置CORS头
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
   // 处理OPTIONS预检请求（CORS）
   if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      },
-    });
+    res.status(200).end();
+    return;
   }
 
   // 只允许POST请求
   if (req.method !== 'POST') {
-    return new Response(
-      JSON.stringify({ success: false, message: '方法不允许' }),
-      {
-        status: 405,
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-        },
-      }
-    );
+    res.status(405).json({ success: false, message: '方法不允许' });
+    return;
   }
 
   try {
     // 解析请求体
-    const body = await req.json();
-    const { username, password, userType } = body;
+    let body = '';
+    for await (const chunk of req) {
+      body += chunk;
+    }
+    const data = JSON.parse(body);
+    const { username, password, userType } = data;
 
     // 验证输入
     if (!username || !password || !userType) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          message: '用户名、密码和用户类型都是必填项',
-        }),
-        {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json; charset=utf-8',
-          },
-        }
-      );
+      res.status(400).json({
+        success: false,
+        message: '用户名、密码和用户类型都是必填项',
+      });
+      return;
     }
 
     // 根据用户类型查询不同的表
@@ -68,51 +57,30 @@ export default async function handler(req) {
       );
       user = result[0];
     } else {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          message: '无效的用户类型',
-        }),
-        {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json; charset=utf-8',
-          },
-        }
-      );
+      res.status(400).json({
+        success: false,
+        message: '无效的用户类型',
+      });
+      return;
     }
 
     // 检查用户是否存在
     if (!user) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          message: '用户名或密码错误',
-        }),
-        {
-          status: 401,
-          headers: {
-            'Content-Type': 'application/json; charset=utf-8',
-          },
-        }
-      );
+      res.status(401).json({
+        success: false,
+        message: '用户名或密码错误',
+      });
+      return;
     }
 
     // 验证密码
     const isPasswordValid = await comparePassword(password, user.password_hash);
     if (!isPasswordValid) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          message: '用户名或密码错误',
-        }),
-        {
-          status: 401,
-          headers: {
-            'Content-Type': 'application/json; charset=utf-8',
-          },
-        }
-      );
+      res.status(401).json({
+        success: false,
+        message: '用户名或密码错误',
+      });
+      return;
     }
 
     // 生成JWT token
@@ -124,40 +92,23 @@ export default async function handler(req) {
     });
 
     // 返回成功响应
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: '登录成功',
-        token: token,
-        user: {
-          id: user.id,
-          username: user.username,
-          userType: userType,
-          studentId: user.student_id || null,
-        },
-      }),
-      {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-        },
-      }
-    );
+    res.status(200).json({
+      success: true,
+      message: '登录成功',
+      token: token,
+      user: {
+        id: user.id,
+        username: user.username,
+        userType: userType,
+        studentId: user.student_id || null,
+      },
+    });
   } catch (error) {
     console.error('登录错误:', error);
-      return new Response(
-      JSON.stringify({
-        success: false,
-        message: '服务器内部错误: ' + error.message,
-      }),
-      {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-          'Access-Control-Allow-Origin': '*',
-        },
-      }
-    );
+    res.status(500).json({
+      success: false,
+      message: '服务器内部错误: ' + error.message,
+    });
   }
 }
 

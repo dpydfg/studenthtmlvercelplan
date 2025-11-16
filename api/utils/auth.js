@@ -57,10 +57,11 @@ export async function comparePassword(password, hash) {
 
 /**
  * 从请求头中提取token
- * @param {Object} headers - 请求头对象
+ * @param {Object} headers - 请求头对象（Node.js格式）
  * @returns {string|null} token字符串，如果不存在则返回null
  */
 export function extractTokenFromHeaders(headers) {
+  // Node.js的headers是小写的
   const authHeader = headers.authorization || headers.Authorization;
   if (!authHeader) {
     return null;
@@ -77,7 +78,7 @@ export function extractTokenFromHeaders(headers) {
 
 /**
  * 中间件：验证请求中的token
- * @param {Object} req - 请求对象
+ * @param {Object} req - Node.js请求对象
  * @returns {Object|null} 解码后的token数据，如果无效则返回null
  */
 export function authenticateRequest(req) {
