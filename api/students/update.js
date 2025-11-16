@@ -1,0 +1,262 @@
+// 更新学生信息API
+// 仅管理员可以更新学生信息
+
+import { query } from '../utils/db.js';
+import { authenticateRequest } from '../utils/auth.js';
+import { hashPassword } from '../utils/auth.js';
+
+export default async function handler(req) {
+  // 只允许PUT请求
+  if (req.method !== 'PUT') {
+    return new Response(
+      JSON.stringify({ success: false, message: '方法不允许' }),
+      {
+        status: 405,
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+        },
+      }
+    );
+  }
+
+  try {
+    // 验证token
+    const user = authenticateRequest(req);
+    if (!user) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: '未授权，请先登录',
+        }),
+        {
+          status: 401,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+          },
+        }
+      );
+    }
+
+    // 检查是否为管理员
+    if (user.userType !== 'admin') {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: '只有管理员可以更新学生信息',
+        }),
+        {
+          status: 403,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+          },
+        }
+      );
+    }
+
+    // 解析请求体
+    const body = await req.json();
+    const {
+      id,
+      username,
+      password,
+      studentId,
+      name,
+      gender,
+      age,
+      class: className,
+      major,
+    } = body;
+
+    // 验证必填字段
+    if (!id) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: '学生ID是必填项',
+        }),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+          },
+        }
+      );
+    }
+
+    // 检查学生是否存在
+    const existingStudent = await query(
+      'SELECT id FROM students WHERE id = $1',
+      [id]
+    );
+    if (existingStudent.length === 0) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: '学生不存在',
+        }),
+        {
+          status: 404,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+          },
+        }
+      );
+    }
+
+    // 如果更新用户名，检查是否与其他用户冲突
+    if (username) {
+      const existingUser = await query(
+        'SELECT id FROM students WHERE username = $1 AND id != $2',
+        [username, id]
+      );
+      if (existingUser.length > 0) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message: '用户名已被其他学生使用',
+          }),
+          {
+            status: 409,
+            headers: {
+              'Content-Type': 'application/json; charset=utf-8',
+            },
+          }
+        );
+      }
+    }
+
+    // 如果更新学号，检查是否与其他学生冲突
+    if (studentId) {
+      const existingStudentId = await query(
+        'SELECT id FROM students WHERE student_id = $1 AND id != $2',
+        [studentId, id]
+      );
+      if (existingStudentId.length > 0) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message: '学号已被其他学生使用',
+          }),
+          {
+            status: 409,
+            headers: {
+              'Content-Type': 'application/json; charset=utf-8',
+            },
+          }
+        );
+      }
+    }
+
+    // 构建更新SQL语句
+    const updates = [];
+    const params = [];
+    let paramIndex = 1;
+
+    if (username) {
+      updates.push(`username = $${paramIndex++}`);
+      params.push(username);
+    }
+    if (password) {
+      if (password.length < 6) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message: '密码长度至少为6位',
+          }),
+          {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json; charset=utf-8',
+            },
+          }
+        );
+      }
+      const passwordHash = await hashPassword(password);
+      updates.push(`password_hash = $${paramIndex++}`);
+      params.push(passwordHash);
+    }
+    if (studentId) {
+      updates.push(`student_id = $${paramIndex++}`);
+      params.push(studentId);
+    }
+    if (name) {
+      updates.push(`name = $${paramIndex++}`);
+      params.push(name);
+    }
+    if (gender !== undefined) {
+      updates.push(`gender = $${paramIndex++}`);
+      params.push(gender || null);
+    }
+    if (age !== undefined) {
+      updates.push(`age = $${paramIndex++}`);
+      params.push(age || null);
+    }
+    if (className !== undefined) {
+      updates.push(`class = $${paramIndex++}`);
+      params.push(className || null);
+    }
+    if (major !== undefined) {
+      updates.push(`major = $${paramIndex++}`);
+      params.push(major || null);
+    }
+
+    if (updates.length === 0) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: '没有要更新的字段',
+        }),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+          },
+        }
+      );
+    }
+
+    // 添加更新时间
+    updates.push(`updated_at = NOW()`);
+    params.push(id);
+
+    // 执行更新
+    const result = await query(
+      `UPDATE students
+       SET ${updates.join(', ')}
+       WHERE id = $${paramIndex}
+       RETURNING id, student_id, username, name, gender, age, class, major, created_at, updated_at`,
+      params
+    );
+
+    const updatedStudent = result[0];
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: '学生信息更新成功',
+        data: updatedStudent,
+      }),
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+        },
+      }
+    );
+  } catch (error) {
+    console.error('更新学生信息错误:', error);
+    return new Response(
+      JSON.stringify({
+        success: false,
+        message: '服务器内部错误',
+      }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+        },
+      }
+    );
+  }
+}
+

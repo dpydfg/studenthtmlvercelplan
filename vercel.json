@@ -1,0 +1,70 @@
+{
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/auth/login",
+      "destination": "/api/auth/login.js"
+    },
+    {
+      "source": "/api/auth/register",
+      "destination": "/api/auth/register.js"
+    },
+    {
+      "source": "/api/students/list",
+      "destination": "/api/students/list.js"
+    },
+    {
+      "source": "/api/students/get",
+      "destination": "/api/students/get.js"
+    },
+    {
+      "source": "/api/students/create",
+      "destination": "/api/students/create.js"
+    },
+    {
+      "source": "/api/students/update",
+      "destination": "/api/students/update.js"
+    },
+    {
+      "source": "/api/students/delete",
+      "destination": "/api/students/delete.js"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/json; charset=utf-8"
+        }
+      ]
+    }
+  ]
+}
+

@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>学生信息管理系统 - 注册</title>
+  <link rel="stylesheet" href="/styles/main.css">
+</head>
+<body>
+  <div class="container">
+    <div class="login-container">
+      <div class="login-card">
+        <h1 class="title">学生注册</h1>
+        <p class="subtitle">填写以下信息完成注册</p>
+        
+        <form id="registerForm" class="form">
+          <div class="form-group">
+            <label for="username">用户名 <span class="required">*</span></label>
+            <input 
+              type="text" 
+              id="username" 
+              name="username" 
+              class="form-control" 
+              placeholder="请输入用户名"
+              required
+              autocomplete="username"
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="password">密码 <span class="required">*</span></label>
+            <input 
+              type="password" 
+              id="password" 
+              name="password" 
+              class="form-control" 
+              placeholder="至少6位字符"
+              required
+              minlength="6"
+              autocomplete="new-password"
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="studentId">学号 <span class="required">*</span></label>
+            <input 
+              type="text" 
+              id="studentId" 
+              name="studentId" 
+              class="form-control" 
+              placeholder="请输入学号"
+              required
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="name">姓名 <span class="required">*</span></label>
+            <input 
+              type="text" 
+              id="name" 
+              name="name" 
+              class="form-control" 
+              placeholder="请输入姓名"
+              required
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="gender">性别</label>
+            <select id="gender" name="gender" class="form-control">
+              <option value="">请选择</option>
+              <option value="男">男</option>
+              <option value="女">女</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="age">年龄</label>
+            <input 
+              type="number" 
+              id="age" 
+              name="age" 
+              class="form-control" 
+              placeholder="请输入年龄"
+              min="1"
+              max="150"
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="class">班级</label>
+            <input 
+              type="text" 
+              id="class" 
+              name="class" 
+              class="form-control" 
+              placeholder="请输入班级"
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="major">专业</label>
+            <input 
+              type="text" 
+              id="major" 
+              name="major" 
+              class="form-control" 
+              placeholder="请输入专业"
+            >
+          </div>
+
+          <div id="errorMessage" class="error-message" style="display: none;"></div>
+          <div id="successMessage" class="success-message" style="display: none;"></div>
+
+          <button type="submit" class="btn btn-primary btn-block">
+            <span id="registerBtnText">注册</span>
+            <span id="registerBtnSpinner" class="spinner" style="display: none;"></span>
+          </button>
+        </form>
+
+        <div class="form-footer">
+          <p>已有账号？<a href="/index.html">返回登录</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/scripts/auth.js"></script>
+  <script>
+    // 注册表单处理
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const formData = {
+        username: document.getElementById('username').value,
+        password: document.getElementById('password').value,
+        studentId: document.getElementById('studentId').value,
+        name: document.getElementById('name').value,
+        gender: document.getElementById('gender').value,
+        age: document.getElementById('age').value ? parseInt(document.getElementById('age').value) : null,
+        class: document.getElementById('class').value,
+        major: document.getElementById('major').value,
+      };
+
+      const errorMessage = document.getElementById('errorMessage');
+      const successMessage = document.getElementById('successMessage');
+      const registerBtnText = document.getElementById('registerBtnText');
+      const registerBtnSpinner = document.getElementById('registerBtnSpinner');
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+
+      // 隐藏消息
+      errorMessage.style.display = 'none';
+      successMessage.style.display = 'none';
+      
+      // 显示加载状态
+      submitBtn.disabled = true;
+      registerBtnText.style.display = 'none';
+      registerBtnSpinner.style.display = 'inline-block';
+
+      try {
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+          },
+          body: JSON.stringify(formData),
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          // 显示成功消息
+          successMessage.textContent = '注册成功！正在跳转...';
+          successMessage.style.display = 'block';
+          
+          // 保存token和用户信息
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          
+          // 延迟跳转到学生页面
+          setTimeout(() => {
+            window.location.href = '/student.html';
+          }, 1500);
+        } else {
+          // 显示错误信息
+          errorMessage.textContent = data.message || '注册失败，请检查输入信息';
+          errorMessage.style.display = 'block';
+        }
+      } catch (error) {
+        console.error('注册错误:', error);
+        errorMessage.textContent = '网络错误，请稍后重试';
+        errorMessage.style.display = 'block';
+      } finally {
+        // 恢复按钮状态
+        submitBtn.disabled = false;
+        registerBtnText.style.display = 'inline';
+        registerBtnSpinner.style.display = 'none';
+      }
+    });
+
+    // 检查是否已登录
+    const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
+    if (token && userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user.userType === 'admin') {
+          window.location.href = '/admin.html';
+        } else {
+          window.location.href = '/student.html';
+        }
+      } catch (e) {
+        // 忽略解析错误
+      }
+    }
+  </script>
+</body>
+</html>
+

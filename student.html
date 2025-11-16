@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>学生信息管理系统 - 我的信息</title>
+  <link rel="stylesheet" href="/styles/main.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>学生信息管理系统</h1>
+      <div class="header-actions">
+        <span class="user-info" id="userInfo"></span>
+        <button class="btn btn-secondary" onclick="logout()">退出登录</button>
+      </div>
+    </header>
+
+    <div class="student-container">
+      <div class="info-card">
+        <h2>我的信息</h2>
+        <div id="studentInfo" class="info-content">
+          <div class="loading">加载中...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/scripts/student.js"></script>
+  <script>
+    // 页面加载时检查登录状态并加载信息
+    window.addEventListener('DOMContentLoaded', () => {
+      checkAuth();
+      loadStudentInfo();
+    });
+  </script>
+</body>
+</html>
+
