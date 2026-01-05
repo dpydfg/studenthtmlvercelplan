@@ -37,11 +37,23 @@ async function loadStudentInfo() {
   }
 }
 
+// 保存当前学生信息，用于编辑
+let currentStudentData = null;
+
 /**
  * 显示学生信息
  */
 function displayStudentInfo(student) {
   const infoContainer = document.getElementById('studentInfo');
+  
+  // 保存学生数据供编辑使用
+  currentStudentData = student;
+  
+  // 显示编辑按钮
+  const editBtn = document.getElementById('editBtn');
+  if (editBtn) {
+    editBtn.style.display = 'inline-block';
+  }
   
   const infoItems = [
     { label: '学号', value: student.student_id || '' },
@@ -73,9 +85,114 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-// 页面加载时显示用户信息
+/**
+ * 显示编辑模态框
+ */
+window.showEditModal = function() {
+  if (!currentStudentData) {
+    alert('学生信息未加载，请稍后再试');
+    return;
+  }
+  
+  const modal = document.getElementById('editModal');
+  const form = document.getElementById('editForm');
+  
+  // 填充表单数据
+  document.getElementById('editName').value = currentStudentData.name || '';
+  document.getElementById('editGender').value = currentStudentData.gender || '';
+  document.getElementById('editAge').value = currentStudentData.age || '';
+  document.getElementById('editClass').value = currentStudentData.class || '';
+  document.getElementById('editMajor').value = currentStudentData.major || '';
+  document.getElementById('editPassword').value = '';
+  
+  // 隐藏错误信息
+  document.getElementById('editErrorMessage').style.display = 'none';
+  
+  modal.style.display = 'flex';
+};
+
+/**
+ * 关闭编辑模态框
+ */
+window.closeEditModal = function() {
+  const modal = document.getElementById('editModal');
+  modal.style.display = 'none';
+  const errorMessage = document.getElementById('editErrorMessage');
+  errorMessage.style.display = 'none';
+};
+
+// 编辑表单提交处理
 document.addEventListener('DOMContentLoaded', () => {
   displayUserInfo('userInfo');
+  
+  const editForm = document.getElementById('editForm');
+  if (editForm) {
+    editForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const errorMessage = document.getElementById('editErrorMessage');
+      errorMessage.style.display = 'none';
+      
+      // 获取当前用户ID
+      const userStr = localStorage.getItem('user');
+      if (!userStr) {
+        errorMessage.textContent = '用户信息不存在，请重新登录';
+        errorMessage.style.display = 'block';
+        return;
+      }
+      
+      const user = JSON.parse(userStr);
+      
+      // 收集表单数据
+      const formData = {
+        id: user.id,
+        name: document.getElementById('editName').value,
+        gender: document.getElementById('editGender').value,
+        age: document.getElementById('editAge').value ? parseInt(document.getElementById('editAge').value) : null,
+        class: document.getElementById('editClass').value,
+        major: document.getElementById('editMajor').value,
+      };
+      
+      // 如果密码不为空，则添加密码字段
+      const password = document.getElementById('editPassword').value;
+      if (password) {
+        formData.password = password;
+      }
+      
+      try {
+        const response = await authenticatedFetch('/api/students/update', {
+          method: 'PUT',
+          body: JSON.stringify(formData),
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          closeEditModal();
+          // 重新加载学生信息
+          loadStudentInfo();
+          alert('信息更新成功');
+        } else {
+          errorMessage.textContent = data.message || '更新失败';
+          errorMessage.style.display = 'block';
+        }
+      } catch (error) {
+        console.error('更新学生信息错误:', error);
+        errorMessage.textContent = '网络错误，请稍后重试';
+        errorMessage.style.display = 'block';
+      }
+    });
+  }
+  
+  // 点击模态框外部关闭
+  const modal = document.getElementById('editModal');
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        closeEditModal();
+      }
+    });
+  }
 });
 
 // 导出函数供全局使用

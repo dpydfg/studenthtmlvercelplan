@@ -1,5 +1,5 @@
 // 更新学生信息API
-// 仅管理员可以更新学生信息
+// 管理员可以更新任何学生信息，学生只能更新自己的信息
 
 import { query } from '../utils/db.js';
 import { authenticateRequest } from '../utils/auth.js';
@@ -30,15 +30,6 @@ export default async function handler(req, res) {
       res.status(401).json({
         success: false,
         message: '未授权，请先登录',
-      });
-      return;
-    }
-
-    // 检查是否为管理员
-    if (user.userType !== 'admin') {
-      res.status(403).json({
-        success: false,
-        message: '只有管理员可以更新学生信息',
       });
       return;
     }
@@ -81,6 +72,26 @@ export default async function handler(req, res) {
         message: '学生不存在',
       });
       return;
+    }
+
+    // 权限控制：学生只能更新自己的信息，管理员可以更新任何学生信息
+    if (user.userType === 'student' && user.id !== parseInt(id)) {
+      res.status(403).json({
+        success: false,
+        message: '您只能修改自己的信息',
+      });
+      return;
+    }
+
+    // 学生不能修改学号和用户名（这些是敏感信息，只能由管理员修改）
+    if (user.userType === 'student') {
+      if (username !== undefined || studentId !== undefined) {
+        res.status(403).json({
+          success: false,
+          message: '学生不能修改用户名和学号，请联系管理员',
+        });
+        return;
+      }
     }
 
     // 如果更新用户名，检查是否与其他用户冲突

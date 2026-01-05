@@ -53,7 +53,15 @@ CREATE TRIGGER update_students_updated_at
 -- 用户名: admin
 -- 密码: admin
 -- 密码哈希值（使用bcrypt加密，salt rounds=10）
--- 注意：这个哈希值对应密码"admin"，如果需要修改，请使用bcrypt重新生成
+-- 注意：如果登录失败，可能是哈希值不正确
+-- 解决方法1：删除现有记录后重新插入
+-- DELETE FROM admins WHERE username = 'admin';
+-- 然后重新执行下面的INSERT语句
+-- 
+-- 解决方法2：使用在线bcrypt工具生成新的哈希值
+-- 访问 https://bcrypt-generator.com/ 或类似工具
+-- 输入密码 "admin"，选择 rounds=10，生成新的哈希值
+-- 然后执行：UPDATE admins SET password_hash = '新生成的哈希值' WHERE username = 'admin';
 INSERT INTO admins (username, password_hash, created_at)
 VALUES ('admin', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', NOW())
 ON CONFLICT (username) DO NOTHING;
